@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khelar Khata - Report Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { background: #121212; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        
+        /* Input Section */
+        .input-section { max-width: 800px; margin: 0 auto 20px; text-align: center; }
+        textarea { width: 100%; height: 100px; background: #222; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 5px; }
+        .btn { padding: 10px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px; text-transform: uppercase; }
+        .btn-gen { background: #2e7d32; color: white; }
+        .btn-pdf { background: #1565c0; color: white; }
+        .btn-img { background: #d32f2f; color: white; }
+
+        /* Report Container */
+        #report-container { max-width: 800px; margin: 0 auto; background: #000; padding: 20px; display: none; position: relative; }
+        
+        /* Cards & Tables */
+        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+        .header { background: #111; padding: 10px; border-bottom: 1px solid #333; text-align: center; color: #ffd700; font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #222; padding: 8px; color: #ccc; text-align: center; border-bottom: 1px solid #444; }
+        td { padding: 8px; border-bottom: 1px solid #333; text-align: center; color: #fff; }
+        .text-left { text-align: left; padding-left: 10px; }
+        .highlight { color: #ffd700; font-weight: bold; }
+
+        /* Tournament Section */
+        .tourney-title { text-align: center; color: #2e7d32; font-size: 1.5rem; margin: 20px 0 10px; text-transform: uppercase; border-bottom: 2px solid #2e7d32; display: inline-block; padding-bottom: 5px; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .flex-col { flex: 1; min-width: 300px; }
+
+        /* SIGNATURE FOOTER STYLE */
+        .footer-signature {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+            color: #777;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        @media print {
+            body { background: white; color: black; }
+            .input-section { display: none; }
+            #report-container { display: block; background: white; color: black; border: none; }
+            .card { border: 1px solid #ccc; background: white; color: black; }
+            th { background: #eee; color: black; }
+            td { color: black; border-bottom: 1px solid #ccc; }
+            .footer-signature { color: #000; border-top: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-section">
+        <h2 style="color: #ffd700;">Khelar Khata Data Generator</h2>
+        <p style="color:#aaa;">Paste the code copied from the app below:</p>
+        <textarea id="jsonInput" placeholder="Paste JSON Data Here..."></textarea>
+        <br>
+        <button class="btn btn-gen" onclick="generateReport()">1. Generate View</button>
+        <div id="action-btns" style="display:none; margin-top: 10px;">
+            <button class="btn btn-pdf" onclick="downloadPDF()">2. Download PDF</button>
+            <button class="btn btn-img" onclick="downloadImage()">3. Download Image</button>
+        </div>
+    </div>
+
+    <!-- REPORT DISPLAY AREA -->
+    <div id="report-container">
+        
+        <!-- Page 1: Match Summary -->
+        <div id="match-view"></div>
+
+        <!-- Page 2: Tournament Overview (Hidden by default) -->
+        <div id="tournament-view" style="display:none; margin-top: 30px; border-top: 2px dashed #444; padding-top: 20px;">
+            <div style="text-align: center;">
+                <h1 class="tourney-title">Tournament Overview</h1>
+                <div id="tourney-name" style="color:#aaa; margin-bottom:15px;"></div>
+            </div>
+
+            <!-- Points Table -->
+            <div class="card">
+                <div class="header">POINTS TABLE</div>
+                <table>
+                    <thead>
+                        <tr><th class="text-left">Team</th><th>M</th><th>W</th><th>L</th><th>D</th><th>Pts</th><th>NRR</th></tr>
+                    </thead>
+                    <tbody id="pt-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Top Stats -->
+            <div class="flex-row">
+                <div class="flex-col card">
+                    <div class="header" style="color: #90caf9;">TOP RUN SCORERS</div>
+                    <table>
+                        <thead><tr><th>Player</th><th>Team</th><th>Runs</th></tr></thead>
+                        <tbody id="top-runs-body"></tbody>
+                    </table>
+                </div>
+                <div class="flex-col card">
+                    <div class="header" style="color: #a5d6a7;">TOP WICKET TAKERS</div>
+                    <table>
+                        <thead><tr><th>Player</th><th>Team</th><th>Wkts</th></tr></thead>
+                        <tbody id="top-wkts-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIGNATURE FOOTER ADDED HERE -->
+        <div class="footer-signature">
+            Generate by MD. ABDUL HALIM SAYEM
+        </div>
+
+    </div>
+
+    <script>
+        let matchData = null;
+
+        function generateReport() {
+            const input = document.getElementById('jsonInput').value;
+            if(!input) return alert("Please paste data first!");
+
+            try {
+                matchData = JSON.parse(input);
+                renderMatch();
+                
+                // Check specifically for the keys injected by the app
+                const tData = matchData.tournamentData || matchData.tournament || matchData.linkedTourney;
+                
+                if (tData) {
+                    renderTournament(tData);
+                    document.getElementById('tournament-view').style.display = 'block';
+                } else {
+                    document.getElementById('tournament-view').style.display = 'none';
+                    if(matchData.type === 'tourney') {
+                        alert("Note: No tournament data found in this snippet.");
+                    }
+                }
+
+                document.getElementById('report-container').style.display = 'block';
+                document.getElementById('action-btns').style.display = 'block';
+
+            } catch (e) {
+                console.error(e);
+                alert("Invalid JSON Data! Copy again from the app.");
+            }
+        }
+
+        function renderMatch() {
+            const c = document.getElementById('match-view');
+            let h = `<div style="text-align:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:24px;">${matchData.teams.host} vs ${matchData.teams.visitor}</h2>
+                        <div style="color:#ffd700; font-size:14px; margin-top:5px;">${matchData.result}</div>
+                        <div style="color:#888; font-size:12px;">${matchData.date}</div>
+                     </div>`;
+
+            matchData.innings.forEach((inn, idx) => {
+                h += `<div class="card">
+                        <div class="header" style="text-align:left; display:flex; justify-content:space-between;">
+                            <span>${inn.batTeam} Innings</span>
+                            <span>${inn.runs}/${inn.wickets} (${Math.floor(inn.balls/6)}.${inn.balls%6})</span>
+                        </div>
+                        <table>
+                            <thead><tr><th class="text-left" width="40%">Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
+                            <tbody>`;
+                
+                inn.batters.forEach(b => {
+                    if(b.runs > 0 || b.balls > 0 || !b.isOut || b.onStrike) {
+                        let out = b.isOut ? (b.howOut === 'runout' ? 'Run Out' : 'Out') : 'Not Out';
+                        let sr = b.balls ? ((b.runs/b.balls)*100).toFixed(0) : '0';
+                        h += `<tr>
+                                <td class="text-left">
+                                    <div style="font-weight:bold;">${b.name} ${!b.isOut?'*':''}</div>
+                                    <div style="font-size:10px; color:#888;">${out}</div>
+                                </td>
+                                <td>${b.runs}</td><td>${b.balls}</td><td>${b.fours}</td><td>${b.sixes}</td><td>${sr}</td>
+                              </tr>`;
+                    }
+                });
+                
+                let ext = inn.extras.wd + inn.extras.nb + inn.extras.b + inn.extras.lb;
+                h += `</tbody></table>
+                      <div style="padding:5px 10px; font-size:11px; background:#222; color:#aaa;">Extras: ${ext} (Wd ${inn.extras.wd}, Nb ${inn.extras.nb}, B ${inn.extras.b}, Lb ${inn.extras.lb})</div>
+                      <table>
+                            <thead><tr><th class="text-left" width="40%">Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Eco</th></tr></thead>
+                            <tbody>`;
+                
+                // Aggregate Bowlers
+                let bowlStats = {};
+                inn.bowlers.forEach(b => {
+                    if(!bowlStats[b.name]) bowlStats[b.name] = {name:b.name, r:0, w:0, b:0, m:0};
+                    bowlStats[b.name].r += b.runs;
+                    bowlStats[b.name].w += b.wickets;
+                    bowlStats[b.name].b += b.balls;
+                    bowlStats[b.name].m += b.maidens || 0;
+                });
+
+                Object.values(bowlStats).forEach(b => {
+                    let o = Math.floor(b.b/6) + "." + (b.b%6);
+                    let eco = b.b ? (b.r / (b.b/6)).toFixed(2) : "0.0";
+                    h += `<tr><td class="text-left">${b.name}</td><td>${o}</td><td>${b.m}</td><td>${b.r}</td><td>${b.w}</td><td>${eco}</td></tr>`;
+                });
+
+                h += `</tbody></table></div>`;
+            });
+            c.innerHTML = h;
+        }
+
+        function renderTournament(t) {
+            document.getElementById('tourney-name').innerText = t.name || "Tournament";
+            
+            // Points Table
+            let sortedTeams = [...t.teams].sort((a,b) => (b.stats.pts - a.stats.pts) || (b.stats.nrr - a.stats.nrr));
+            let ptH = "";
+            sortedTeams.forEach(tm => {
+                ptH += `<tr>
+                            <td class="text-left">${tm.name}</td>
+                            <td>${tm.stats.p}</td>
+                            <td>${tm.stats.w}</td>
+                            <td>${tm.stats.l}</td>
+                            <td>${tm.stats.d||0}</td>
+                            <td class="highlight">${tm.stats.pts}</td>
+                            <td>${(tm.stats.nrr || 0).toFixed(3)}</td>
+                        </tr>`;
+            });
+            document.getElementById('pt-body').innerHTML = ptH;
+
+            // Top Stats
+            let allPlayers = [];
+            t.teams.forEach(tm => {
+                tm.players.forEach(p => {
+                    if(p.stats) allPlayers.push({...p, team: tm.name});
+                });
+            });
+
+            // Top Runs
+            let topRuns = [...allPlayers].sort((a,b) => (b.stats.runs||0) - (a.stats.runs||0)).slice(0, 5);
+            let trH = "";
+            topRuns.forEach(p => {
+                if(p.stats.runs > 0)
+                trH += `<tr><td class="text-left">${p.name}</td><td>${p.team}</td><td class="highlight">${p.stats.runs}</td></tr>`;
+            });
+            document.getElementById('top-runs-body').innerHTML = trH;
+
+            // Top Wickets
+            let topWkts = [...allPlayers].sort((a,b) => (b.stats.wickets||0) - (a.stats.wickets||0)).slice(0, 5);
+            let twH = "";
+            topWkts.forEach(p => {
+                if(p.stats.wickets > 0)
+                twH += `<tr><td class="text-left">${p.name}</td><td>${p.team}</td><td class="highlight">${p.stats.wickets}</td></tr>`;
+            });
+            document.getElementById('top-wkts-body').innerHTML = twH;
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const element = document.getElementById('report-container');
+            
+            // Force width for consistent rendering
+            element.style.width = "750px"; 
+            
+            await html2canvas(element, { scale: 2, backgroundColor: "#121212" }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; 
+                const pageHeight = 295; 
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    doc.addPage();
+                    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                doc.save('Scorecard_Full_Report.pdf');
+            });
+            
+            element.style.width = "auto"; // Reset width
+        }
+
+        function downloadImage() {
+            const element = document.getElementById('report-container');
+            element.style.width = "750px"; 
+            html2canvas(element, { scale: 2, backgroundColor: "#121212" }).then(canvas => {
+                let link = document.createElement('a');
+                link.download = 'Match_Report.jpg';
+                link.href = canvas.toDataURL();
+                link.click();
+                element.style.width = "auto"; 
+            });
+        }
+    </script>
+</body>
+</html>
