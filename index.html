@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Khelar Khata - Report Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            background: #121212; 
+            color: white; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            box-sizing: border-box;
+        }
+        
+        /* --- INPUT SECTION (Responsive) --- */
+        .input-section { 
+            max-width: 800px; 
+            margin: 0 auto 20px; 
+            text-align: center; 
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        
+        textarea { 
+            width: 100%; 
+            height: 80px; 
+            background: #000; 
+            color: #0f0; 
+            border: 1px solid #444; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: monospace;
+            box-sizing: border-box;
+            resize: none;
+        }
+
+        /* BUTTON GRID */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn-full {
+            grid-column: span 2;
+        }
+
+        .btn { 
+            padding: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            text-transform: uppercase; 
+            font-size: 0.9rem;
+            color: white;
+            transition: opacity 0.2s;
+        }
+        .btn:active { opacity: 0.8; }
+
+        .btn-paste { background: #f57f17; color: black; }
+        .btn-clear { background: #424242; }
+        .btn-gen { background: #2e7d32; }
+        .btn-img { background: #d32f2f; margin-top: 10px; width: 100%; font-size: 1.1rem; }
+
+        /* --- REPORT CONTAINER --- */
+        #report-container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #000; 
+            padding: 15px; 
+            display: none; 
+            border: 1px solid #333;
+        }
+        
+        /* Cards & Tables */
+        .card { 
+            background: #1e1e1e; 
+            border: 1px solid #333; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            overflow: hidden; 
+        }
+        .header { 
+            background: #111; 
+            padding: 8px; 
+            border-bottom: 1px solid #333; 
+            text-align: center; 
+            color: #ffd700; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+        }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #252525; padding: 6px; color: #ccc; text-align: center; border-bottom: 1px solid #444; }
+        td { padding: 6px; border-bottom: 1px solid #333; text-align: center; color: #fff; }
+        .text-left { text-align: left; padding-left: 8px; }
+        .highlight { color: #ffd700; font-weight: bold; }
+
+        /* Tournament Section */
+        .tourney-title { 
+            text-align: center; 
+            color: #2e7d32; 
+            font-size: 1.2rem; 
+            margin: 15px 0 10px; 
+            text-transform: uppercase; 
+            border-bottom: 2px solid #2e7d32; 
+            display: inline-block; 
+            padding-bottom: 2px; 
+        }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .flex-col { flex: 1; min-width: 300px; }
+
+        /* --- FOOTER SIGNATURE --- */
+        .footer-signature {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            color: #888;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-family: monospace;
+        }
+
+        /* --- MOBILE RESPONSIVE FIXES --- */
+        @media (max-width: 600px) {
+            body { padding: 5px; }
+            .input-section { padding: 10px; }
+            
+            /* On mobile, tables might overflow, allow scrolling for preview */
+            .card { overflow-x: auto; } 
+            
+            /* Make buttons stack properly */
+            .btn { font-size: 0.8rem; padding: 10px; }
+            
+            /* Reduce font sizes for compact view */
+            h2 { font-size: 1.2rem; }
+            table { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-section">
+        <h2 style="color: #ffd700; margin-top:0;">Report Generator</h2>
+        
+        <textarea id="jsonInput" placeholder="Paste Data Here..."></textarea>
+        
+        <div class="btn-grid">
+            <button class="btn btn-paste" onclick="handlePaste()">&#128203; Paste</button>
+            <button class="btn btn-clear" onclick="clearText()">&#10006; Clear Text</button>
+            <button class="btn btn-gen btn-full" onclick="generateReport()">&#9881; Generate View</button>
+        </div>
+
+        <div id="action-btns" style="display:none;">
+            <button class="btn btn-img" onclick="downloadImage()">&#128247; Download Image</button>
+        </div>
+    </div>
+
+    <!-- REPORT DISPLAY AREA -->
+    <div id="report-container">
+        
+        <!-- Page 1: Match Summary -->
+        <div id="match-view"></div>
+
+        <!-- Page 2: Tournament Overview (Hidden by default) -->
+        <div id="tournament-view" style="display:none; margin-top: 20px; border-top: 2px dashed #444; padding-top: 15px;">
+            <div style="text-align: center;">
+                <h1 class="tourney-title">Tournament Overview</h1>
+                <div id="tourney-name" style="color:#aaa; font-size:0.9rem; margin-bottom:10px;"></div>
+            </div>
+
+            <!-- Points Table -->
+            <div class="card">
+                <div class="header">POINTS TABLE</div>
+                <table>
+                    <thead>
+                        <tr><th class="text-left">Team</th><th>M</th><th>W</th><th>L</th><th>D</th><th>Pts</th><th>NRR</th></tr>
+                    </thead>
+                    <tbody id="pt-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Top Stats -->
+            <div class="flex-row">
+                <div class="flex-col card">
+                    <div class="header" style="color: #90caf9;">TOP RUN SCORERS</div>
+                    <table>
+                        <thead><tr><th>Player</th><th>Team</th><th>Runs</th></tr></thead>
+                        <tbody id="top-runs-body"></tbody>
+                    </table>
+                </div>
+                <div class="flex-col card">
+                    <div class="header" style="color: #a5d6a7;">TOP WICKET TAKERS</div>
+                    <table>
+                        <thead><tr><th>Player</th><th>Team</th><th>Wkts</th></tr></thead>
+                        <tbody id="top-wkts-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DYNAMIC FOOTER SIGNATURE -->
+        <div class="footer-signature" id="signature-text"></div>
+
+    </div>
+
+    <script>
+        let matchData = null;
+
+        // 1. PASTE FUNCTIONALITY
+        async function handlePaste() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('jsonInput').value = text;
+            } catch (err) {
+                alert('Permission denied or not supported in this browser. Please paste manually.');
+            }
+        }
+
+        // 2. CLEAR FUNCTIONALITY
+        function clearText() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('report-container').style.display = 'none';
+            document.getElementById('action-btns').style.display = 'none';
+        }
+
+        function generateReport() {
+            const input = document.getElementById('jsonInput').value;
+            if(!input) return alert("Please paste data first!");
+
+            try {
+                matchData = JSON.parse(input);
+                renderMatch();
+                
+                // Set Footer Date/Time
+                updateFooter();
+
+                const tData = matchData.tournamentData || matchData.tournament || matchData.linkedTourney;
+                
+                if (tData) {
+                    renderTournament(tData);
+                    document.getElementById('tournament-view').style.display = 'block';
+                } else {
+                    document.getElementById('tournament-view').style.display = 'none';
+                }
+
+                document.getElementById('report-container').style.display = 'block';
+                document.getElementById('action-btns').style.display = 'block';
+
+            } catch (e) {
+                console.error(e);
+                alert("Invalid JSON Data! Copy again from the app.");
+            }
+        }
+
+        function updateFooter() {
+            const now = new Date();
+            // Format: DD/MM/YYYY hh:mm AM/PM
+            const dateStr = now.toLocaleString('en-GB', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', hour12: true 
+            });
+            document.getElementById('signature-text').innerText = 
+                `${dateStr} // Generate by MD. ABDUL HALIM SAYEM`;
+        }
+
+        function renderMatch() {
+            const c = document.getElementById('match-view');
+            let h = `<div style="text-align:center; margin-bottom:15px;">
+                        <h2 style="margin:0; font-size:1.3rem; color:white;">${matchData.teams.host} vs ${matchData.teams.visitor}</h2>
+                        <div style="color:#ffd700; font-size:0.9rem; margin-top:3px;">${matchData.result}</div>
+                        <div style="color:#888; font-size:0.75rem;">${matchData.date}</div>
+                     </div>`;
+
+            matchData.innings.forEach((inn, idx) => {
+                h += `<div class="card">
+                        <div class="header" style="text-align:left; display:flex; justify-content:space-between;">
+                            <span>${inn.batTeam}</span>
+                            <span>${inn.runs}/${inn.wickets} (${Math.floor(inn.balls/6)}.${inn.balls%6})</span>
+                        </div>
+                        <table>
+                            <thead><tr><th class="text-left" width="45%">Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
+                            <tbody>`;
+                
+                inn.batters.forEach(b => {
+                    if(b.runs > 0 || b.balls > 0 || !b.isOut || b.onStrike) {
+                        let out = b.isOut ? (b.howOut === 'runout' ? 'Run Out' : 'Out') : 'Not Out';
+                        let sr = b.balls ? ((b.runs/b.balls)*100).toFixed(0) : '0';
+                        h += `<tr>
+                                <td class="text-left">
+                                    <div style="font-weight:bold; font-size:0.85rem;">${b.name} ${!b.isOut?'*':''}</div>
+                                    <div style="font-size:0.65rem; color:#888;">${out}</div>
+                                </td>
+                                <td>${b.runs}</td><td>${b.balls}</td><td>${b.fours}</td><td>${b.sixes}</td><td>${sr}</td>
+                              </tr>`;
+                    }
+                });
+                
+                let ext = inn.extras.wd + inn.extras.nb + inn.extras.b + inn.extras.lb;
+                h += `</tbody></table>
+                      <div style="padding:4px 8px; font-size:0.7rem; background:#222; color:#aaa; border-top:1px solid #333;">Extras: ${ext} (Wd ${inn.extras.wd}, Nb ${inn.extras.nb}, B ${inn.extras.b}, Lb ${inn.extras.lb})</div>
+                      <table>
+                            <thead><tr><th class="text-left" width="45%">Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Eco</th></tr></thead>
+                            <tbody>`;
+                
+                let bowlStats = {};
+                inn.bowlers.forEach(b => {
+                    if(!bowlStats[b.name]) bowlStats[b.name] = {name:b.name, r:0, w:0, b:0, m:0};
+                    bowlStats[b.name].r += b.runs;
+                    bowlStats[b.name].w += b.wickets;
+                    bowlStats[b.name].b += b.balls;
+                    bowlStats[b.name].m += b.maidens || 0;
+                });
+
+                Object.values(bowlStats).forEach(b => {
+                    let o = Math.floor(b.b/6) + "." + (b.b%6);
+                    let eco = b.b ? (b.r / (b.b/6)).toFixed(2) : "0.0";
+                    h += `<tr><td class="text-left">${b.name}</td><td>${o}</td><td>${b.m}</td><td>${b.r}</td><td>${b.w}</td><td>${eco}</td></tr>`;
+                });
+
+                h += `</tbody></table></div>`;
+            });
+            c.innerHTML = h;
+        }
+
+        function renderTournament(t) {
+            document.getElementById('tourney-name').innerText = t.name || "Tournament";
+            
+            let sortedTeams = [...t.teams].sort((a,b) => (b.stats.pts - a.stats.pts) || (b.stats.nrr - a.stats.nrr));
+            let ptH = "";
+            sortedTeams.forEach(tm => {
+                ptH += `<tr>
+                            <td class="text-left">${tm.name}</td>
+                            <td>${tm.stats.p}</td>
+                            <td>${tm.stats.w}</td>
+                            <td>${tm.stats.l}</td>
+                            <td>${tm.stats.d||0}</td>
+                            <td class="highlight">${tm.stats.pts}</td>
+                            <td>${(tm.stats.nrr || 0).toFixed(3)}</td>
+                        </tr>`;
+            });
+            document.getElementById('pt-body').innerHTML = ptH;
+
+            let allPlayers = [];
+            t.teams.forEach(tm => {
+                tm.players.forEach(p => {
+                    if(p.stats) allPlayers.push({...p, team: tm.name});
+                });
+            });
+
+            let topRuns = [...allPlayers].sort((a,b) => (b.stats.runs||0) - (a.stats.runs||0)).slice(0, 5);
+            let trH = "";
+            topRuns.forEach(p => {
+                if(p.stats.runs > 0)
+                trH += `<tr><td class="text-left">${p.name}</td><td>${p.team}</td><td class="highlight">${p.stats.runs}</td></tr>`;
+            });
+            document.getElementById('top-runs-body').innerHTML = trH;
+
+            let topWkts = [...allPlayers].sort((a,b) => (b.stats.wickets||0) - (a.stats.wickets||0)).slice(0, 5);
+            let twH = "";
+            topWkts.forEach(p => {
+                if(p.stats.wickets > 0)
+                twH += `<tr><td class="text-left">${p.name}</td><td>${p.team}</td><td class="highlight">${p.stats.wickets}</td></tr>`;
+            });
+            document.getElementById('top-wkts-body').innerHTML = twH;
+        }
+
+        function downloadImage() {
+            const element = document.getElementById('report-container');
+            
+            // 1. Temporarily force desktop width for high-quality capture
+            const originalWidth = element.style.width;
+            element.style.width = "750px"; 
+            
+            // 2. Capture
+            html2canvas(element, { 
+                scale: 2, 
+                backgroundColor: "#121212",
+                useCORS: true 
+            }).then(canvas => {
+                let link = document.createElement('a');
+                link.download = `Match_Report_${Date.now()}.jpg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+                
+                // 3. Reset width to allow responsive view again
+                element.style.width = originalWidth;
+            }).catch(err => {
+                alert("Image generation failed: " + err);
+                element.style.width = originalWidth;
+            });
+        }
+    </script>
+</body>
+</html>
