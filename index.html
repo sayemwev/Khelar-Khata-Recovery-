@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>khelar Khata-Recovery Tool</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --bg-card: #121212;
+            --text-main: #ffffff;
+            --accent-green: #2e7d32;
+            --accent-blue: #1565c0;
+            --accent-red: #c62828;
+            --accent-purple: #6a1b9a;
+            --border: #333333;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        h1 { color: var(--accent-green); text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+        
+        .container { width: 100%; max-width: 600px; background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        
+        /* Toolbar for Paste/Clear Buttons */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .toolbar p {
+            margin: 0;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .tool-btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tool-btn {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.2s;
+            color: white;
+        }
+
+        .btn-paste-tool { background: var(--accent-purple); }
+        .btn-paste-tool:hover { background: #8e24aa; }
+
+        .btn-clear-tool { background: var(--accent-red); }
+        .btn-clear-tool:hover { background: #e53935; }
+
+        textarea { width: 100%; height: 150px; background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; resize: vertical; margin-bottom: 15px; font-family: monospace; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; transition: 0.2s; }
+        .btn-green { background: var(--accent-green); color: white; }
+        .btn-blue { background: var(--accent-blue); color: white; }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        
+        .status { margin-top: 10px; font-size: 0.9rem; color: #aaa; text-align: center; }
+        
+        /* HIDDEN VISUAL CAPTURE STYLES */
+        #visual-capture {
+            position: fixed; top: 0; left: -9999px; width: 600px; background: #121212; color: white;
+            padding: 20px; font-family: 'Segoe UI', sans-serif; border: 2px solid #333;
+        }
+        .vc-header { background: #000; padding: 15px; color: #ffd700; text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px;}
+        .vc-team-card { background: #1e1e1e; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
+        .vc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .vc-table th { background: #000; color: #aaa; padding: 5px; text-align: center; }
+        .vc-table td { border-bottom: 1px solid #333; padding: 5px; text-align: center; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>Khelar Khata Recovery</h1>
+    <div class="container">
+        
+        <!-- NEW TOOLBAR AREA START -->
+        <div class="toolbar">
+            <p>Paste "Data Copy" code:</p>
+            <div class="tool-btn-group">
+                <button class="tool-btn btn-paste-tool" onclick="pasteClipboard()">
+                    <span>📋</span> Paste
+                </button>
+                <button class="tool-btn btn-clear-tool" onclick="clearBox()">
+                    <span>❌</span> Clear
+                </button>
+            </div>
+        </div>
+        <!-- NEW TOOLBAR AREA END -->
+
+        <textarea id="dataInput" placeholder="Paste JSON data here...                                       A website created by MD ABDUL HALIM SAYEM"></textarea>
+        
+        <button class="btn btn-green" onclick="processData('image')">Download Image (JPG)</button>
+        <button class="btn btn-blue" onclick="processData('pdf')">Download PDF</button>
+        
+        <div id="statusMsg" class="status">Waiting for input...</div>
+    </div>
+
+    <!-- Hidden Capture Container -->
+    <div id="visual-capture"></div>
+
+    <script>
+        // --- NEW FUNCTIONS FOR PASTE & CLEAR ---
+        async function pasteClipboard() {
+            const inputField = document.getElementById('dataInput');
+            const status = document.getElementById('statusMsg');
+            try {
+                const text = await navigator.clipboard.readText();
+                inputField.value = text;
+                status.innerText = "Text pasted from clipboard!";
+                status.style.color = "#a5d6a7";
+                setTimeout(() => { status.innerText = "Waiting for input..."; status.style.color = "#aaa"; }, 2000);
+            } catch (err) {
+                status.innerText = "Failed to paste: Permission denied or empty.";
+                status.style.color = "#ff5252";
+                console.error('Failed to read clipboard contents: ', err);
+            }
+        }
+
+        function clearBox() {
+            document.getElementById('dataInput').value = '';
+            const status = document.getElementById('statusMsg');
+            status.innerText = "Box cleared.";
+            status.style.color = "#aaa";
+        }
+        // --- END NEW FUNCTIONS ---
+
+        function processData(type) {
+            const input = document.getElementById('dataInput').value;
+            const status = document.getElementById('statusMsg');
+            
+            if (!input.trim()) {
+                status.innerText = "Error: Please paste data first.";
+                status.style.color = "#ff5252";
+                return;
+            }
+
+            try {
+                const matchData = JSON.parse(input);
+                status.innerText = "Data parsed successfully! Generating...";
+                status.style.color = "#4caf50";
+
+                if (type === 'image') {
+                    downloadMatchImage(matchData);
+                } else {
+                    downloadMatchPDF(matchData);
+                }
+            } catch (e) {
+                console.error(e);
+                status.innerText = "Error: Invalid Data Format.";
+                status.style.color = "#ff5252";
+            }
+        }
+
+        // --- IMAGE GENERATION LOGIC ---
+        function downloadMatchImage(m) {
+            let c = document.getElementById('visual-capture');
+            c.innerHTML = "";
+            
+            c.innerHTML = `<div class="vc-header"><h2>${m.teams.host} vs ${m.teams.visitor}</h2><p style="font-size:0.9rem; color:#ccc;">${m.result || 'In Progress'}</p><p style="font-size:0.8rem; color:#888;">${m.date}</p></div>`;
+            m.innings.forEach(inn => {
+                let html = `<div class="vc-team-card"><h3 style="color:#a5d6a7; border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">${inn.batTeam} &nbsp; ${inn.runs}/${inn.wickets} <span style="font-size:0.8em; color:#888;">(${Math.floor(inn.balls/6)}.${inn.balls%6} Ov)</span></h3><table class="vc-table"><thead><tr><th style="text-align:left;">Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead><tbody>`;
+                inn.batters.forEach(b => { if(b.runs > 0 || b.balls > 0 || !b.isOut) { html += `<tr><td style="text-align:left;">${b.name} ${!b.isOut && b.onStrike?'*':''}</td><td>${b.runs}</td><td>${b.balls}</td><td>${b.fours}</td><td>${b.sixes}</td><td>${b.balls>0?((b.runs/b.balls)*100).toFixed(0):'0'}</td></tr>`; } });
+                let extTotal = inn.extras.wd+inn.extras.nb+inn.extras.b+inn.extras.lb; let extDetail = `[Wd(${inn.extras.wd}), Nb(${inn.extras.nb}), Lb(${inn.extras.lb}), Byes(${inn.extras.b})]`;
+                html += `</tbody></table><div style="margin:10px 0; font-size:11px; color:#aaa; font-weight:bold;">Extras ${extTotal} ${extDetail}</div><table class="vc-table"><thead><tr><th style="text-align:left;">Bowler</th><th>O</th><th>R</th><th>W</th><th>Eco</th></tr></thead><tbody>`;
+                let aggBowl = {};
+                inn.bowlers.forEach(b => { if(!aggBowl[b.name]) aggBowl[b.name] = { name:b.name, runs:0, wickets:0, balls:0 }; aggBowl[b.name].runs += b.runs; aggBowl[b.name].wickets += b.wickets; aggBowl[b.name].balls += b.balls; });
+                Object.values(aggBowl).forEach(b => { let bo = b.balls; let eco = bo>0?(b.runs/(bo/6)).toFixed(2):'0.00'; html += `<tr><td style="text-align:left;">${b.name}</td><td>${Math.floor(bo/6)}.${bo%6}</td><td>${b.runs}</td><td>${b.wickets}</td><td>${eco}</td></tr>`; });
+                html += `</tbody></table></div>`; c.innerHTML += html;
+            });
+            c.innerHTML += `<div style="text-align:center; margin-top:10px; font-size:10px; color:#555;">Generated By MD ABDUL HALIM SAYEM</div>`;
+            
+            html2canvas(c, { backgroundColor: "#121212", scale: 2 }).then(canvas => {
+                let link = document.createElement('a'); 
+                link.download = `scorecard_${Date.now()}.png`; 
+                link.href = canvas.toDataURL(); 
+                link.click();
+                document.getElementById('statusMsg').innerText = "Image Downloaded!";
+            }).catch(err => alert("Image generation failed"));
+        }
+
+        // --- PDF GENERATION LOGIC ---
+        function downloadMatchPDF(m) {
+            if(!window.jspdf) return alert("PDF Library loading...");
+            
+            const { jsPDF } = window.jspdf; 
+            const doc = new jsPDF();
+            
+            const addFooter = () => {
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+                    let footerText = `Generated: ${new Date().toLocaleString()} | Generated By MD. ABDUL HALIM SAYEM | Page ${i}`;
+                    doc.text(footerText, 105, 290, null, null, 'center');
+                }
+            };
+            const drawHeader = () => {
+                doc.setFontSize(18); doc.setTextColor(0, 0, 0); doc.text(`${m.teams.host} vs ${m.teams.visitor}`, 105, 15, null, null, 'center');
+                doc.setFontSize(12); doc.text(`Result: ${m.result || 'In Progress'}`, 105, 22, null, null, 'center');
+                doc.setFontSize(10); doc.text(`Date: ${m.date}`, 105, 27, null, null, 'center');
+            };
+
+            m.innings.forEach((inn, index) => {
+                if (index > 0) { doc.addPage(); } drawHeader();
+                let yPos = 35; doc.setFillColor(30, 30, 30); doc.rect(14, yPos, 182, 8, 'F'); doc.setTextColor(255, 255, 255);
+                doc.setFontSize(12); doc.text(`${inn.batTeam}  ${inn.runs}/${inn.wickets} (${Math.floor(inn.balls/6)}.${inn.balls%6}) - Innings ${index+1}`, 16, yPos + 6);
+                yPos += 12;
+
+                let batData = [];
+                inn.batters.forEach(b => {
+                    let outText = 'Not Out';
+                    if (b.isOut) {
+                         let bowlerText = b.wicketTaker ? ` b ${b.wicketTaker}` : '';
+                         if (b.howOut === 'caught') outText = `c ${b.wicketFielder || 'Sub'}${bowlerText}`;
+                         else if (b.howOut === 'bowled') outText = `b ${b.wicketTaker}`;
+                         else if (b.howOut === 'lbw') outText = `lbw${bowlerText}`;
+                         else if (b.howOut === 'stumped') outText = `st ${b.wicketFielder || 'WK'}${bowlerText}`;
+                         else if (b.howOut === 'runout') outText = `Run Out (${b.wicketFielder || ''})`;
+                         else outText = b.howOut + bowlerText;
+                    } else if (b.retired) { outText = 'Retired Hurt'; }
+                    batData.push([b.name + (b.isOut ? '' : '*'), b.runs, b.balls, b.fours, b.sixes, b.balls > 0 ? ((b.runs/b.balls)*100).toFixed(1) : '0.0', outText]);
+                });
+
+                doc.autoTable({ startY: yPos, head: [['Batter', 'R', 'B', '4s', '6s', 'SR', 'Out']], body: batData, theme: 'grid', headStyles: { fillColor: [46, 125, 50] }, styles: { fontSize: 8, cellPadding: 2 } });
+                yPos = doc.lastAutoTable.finalY + 5;
+                let extTotal = inn.extras.wd+inn.extras.nb+inn.extras.b+inn.extras.lb;
+                doc.setTextColor(0,0,0); doc.setFontSize(10); doc.text(`Extras: ${extTotal} [Wd(${inn.extras.wd}), Nb(${inn.extras.nb}), Lb(${inn.extras.lb}), Byes(${inn.extras.b})]`, 14, yPos);
+                yPos += 8;
+
+                let aggBowl = {};
+                inn.bowlers.forEach(b => { if(!aggBowl[b.name]) aggBowl[b.name] = { name:b.name, runs:0, wickets:0, balls:0 }; aggBowl[b.name].runs += b.runs; aggBowl[b.name].wickets += b.wickets; aggBowl[b.name].balls += b.balls; });
+                let bowlData = [];
+                Object.values(aggBowl).forEach(b => { let bo = b.balls; let eco = bo>0?(b.runs/(bo/6)).toFixed(2):'0.00'; bowlData.push([b.name, `${Math.floor(bo/6)}.${bo%6}`, b.runs, b.wickets, eco]); });
+                doc.autoTable({ startY: yPos, head: [['Bowler', 'O', 'R', 'W', 'Eco']], body: bowlData, theme: 'grid', headStyles: { fillColor: [21, 101, 192] }, styles: { fontSize: 8, cellPadding: 2 } });
+            });
+
+            // --- TOURNAMENT OVERVIEW SECTION ---
+            let t = m.tournamentData; 
+            
+            if (t) {
+                doc.addPage(); doc.setTextColor(0,0,0); doc.setFontSize(16); doc.text("Tournament Overview", 105, 20, null, null, 'center');
+                doc.setFontSize(12); doc.text("Points Table", 14, 30);
+                let sorted = [...t.teams].sort((a,b) => { if(b.stats.pts !== a.stats.pts) return b.stats.pts - a.stats.pts; return b.stats.nrr - a.stats.nrr; });
+                let ptData = sorted.map(tm => [tm.name, tm.stats.p, tm.stats.w, tm.stats.l, tm.stats.d, tm.stats.pts, tm.stats.nrr.toFixed(3)]);
+                doc.autoTable({ startY: 35, head: [['Team', 'P', 'W', 'L', 'D', 'Pts', 'NRR']], body: ptData, theme: 'striped', headStyles: { fillColor: [0, 0, 0] } });
+
+                let yStat = doc.lastAutoTable.finalY + 15;
+                let allPlayers = []; t.teams.forEach(tm => { tm.players.forEach(p => { allPlayers.push({...p, team:tm.name}); }); });
+                
+                let topBats = [...allPlayers].sort((a,b)=>(b.stats?.runs||0)-(a.stats?.runs||0)).slice(0,10);
+                let batBody = topBats.map((p, i) => [i+1, p.name, p.team, p.stats?.matches||0, p.stats?.runs||0]);
+                doc.text("Top Run Scorers", 14, yStat);
+                doc.autoTable({ startY: yStat + 5, head: [['#', 'Name', 'Team', 'Mat', 'Runs']], body: batBody, theme: 'grid', headStyles: { fillColor: [46, 125, 50] }, tableWidth: 80, margin: { left: 14 } });
+
+                let topBowls = [...allPlayers].sort((a,b)=>(b.stats?.wickets||0)-(a.stats?.wickets||0)).slice(0,10);
+                let bowlBody = topBowls.map((p, i) => [i+1, p.name, p.team, p.stats?.matches||0, p.stats?.wickets||0]);
+                doc.text("Top Wicket Takers", 110, yStat);
+                doc.autoTable({ startY: yStat + 5, head: [['#', 'Name', 'Team', 'Mat', 'Wkts']], body: bowlBody, theme: 'grid', headStyles: { fillColor: [21, 101, 192] }, tableWidth: 80, margin: { left: 110 } });
+            }
+
+            // --- BALL BY BALL LOG SECTION ---
+            doc.addPage(); doc.setTextColor(0,0,0); doc.setFontSize(16); doc.text("Detailed Ball by Ball Analysis", 105, 20, null, null, 'center'); let logY = 30;
+            m.innings.forEach((inn, index) => {
+                doc.setFontSize(12); doc.setTextColor(46, 125, 50); doc.text(`Innings ${index+1}: ${inn.batTeam}`, 14, logY); logY += 5;
+                let logData = []; let ballInOverCount = 1; let lastOverIndex = -1;
+                
+                let ballsToProcess = inn.fullLog || inn.ballByBallAnalysis || [];
+                let sortedBalls = [...ballsToProcess].sort((a,b) => (a.over - b.over));
+                
+                sortedBalls.forEach((b) => {
+                     let displayTxt = b.display || b.ballStr;
+                     if (b.over !== lastOverIndex) { ballInOverCount = 1; lastOverIndex = b.over; }
+                     let ballLabel = `${b.over}.${ballInOverCount++}`; let desc = `${b.bowler} to ${b.batter}`; let outcome = displayTxt;
+                     let batterInfo = "", teamInfo = "";
+                     if(b.snapshot) {
+                         batterInfo = `${b.batter} (${b.snapshot.batterRuns}/${b.snapshot.batterBalls})`; teamInfo = `${b.snapshot.teamScore}/${b.snapshot.teamWickets}`;
+                         if(b.isWicket && b.snapshot.howOut) { outcome += ` (${b.snapshot.howOut})`; }
+                     } else { batterInfo = b.batter; }
+                     logData.push([ballLabel, desc, batterInfo, teamInfo, outcome]);
+                });
+                doc.autoTable({ startY: logY, head: [['Ov', 'Bowler to Batter', 'Batter Stats', 'Score', 'Result']], body: logData, theme: 'grid', headStyles: { fillColor: [80, 80, 80] }, styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 0: { cellWidth: 15, fontStyle: 'bold' }, 4: { cellWidth: 30, fontStyle: 'bold', halign: 'center' } } });
+                logY = doc.lastAutoTable.finalY + 15;
+            });
+
+            addFooter(); 
+            doc.save(`scorecard_${Date.now()}.pdf`);
+            document.getElementById('statusMsg').innerText = "PDF Downloaded!";
+        }
+    </script>
+</body>
+</html>
