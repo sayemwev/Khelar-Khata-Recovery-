@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khelar Khata Recovery</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --bg-card: #121212;
+            --bg-lighter: #1e1e1e;
+            --primary: #ffffff;
+            --accent-green: #2e7d32;
+            --accent-gold: #ffd700;
+            --accent-blue: #1565c0;
+            --accent-red: #d32f2f;
+            --border: #333333;
+        }
+
+        body { background-color: var(--bg-dark); color: var(--primary); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .container { width: 100%; max-width: 600px; }
+        
+        header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { color: var(--accent-gold); margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-top: 5px; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        textarea {
+            width: 100%; height: 120px; background: var(--bg-lighter); border: 1px solid #444; 
+            color: #ddd; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.8rem; resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: var(--accent-green); }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent-green); color: white; }
+        .btn-outline { background: transparent; border: 1px solid #666; color: #ccc; }
+        .btn-blue { background: var(--accent-blue); color: white; }
+        .btn-gold { background: var(--accent-gold); color: black; }
+        
+        .status-bar { 
+            margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 0.85rem; text-align: center; display: none; 
+        }
+        .status-loading { background: #1a1a1a; color: #ffd700; border: 1px solid #444; }
+        .status-success { background: rgba(46, 125, 50, 0.2); color: #4caf50; border: 1px solid #2e7d32; }
+        .status-error { background: rgba(211, 47, 47, 0.2); color: #ef5350; border: 1px solid #d32f2f; }
+
+        .preview-box { display: none; animation: fadeIn 0.5s; }
+        .preview-header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+        .match-title { font-size: 1.2rem; font-weight: bold; color: white; }
+        .match-date { color: #888; font-size: 0.8rem; }
+
+        .action-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--bg-card); width: 90%; max-width: 400px; padding: 25px; border-radius: 12px; border: 1px solid var(--accent-gold); text-align: center; }
+
+        /* Hidden Capture Area for Images */
+        #visual-capture {
+            position: fixed; top: 0; left: -9999px; width: 600px; background: #121212; color: white;
+            padding: 20px; font-family: 'Segoe UI', sans-serif; border: 2px solid #333;
+        }
+        .vc-header { background: #000; padding: 15px; color: #ffd700; text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px;}
+        .vc-team-card { background: #1e1e1e; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
+        .vc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .vc-table th { background: #000; color: #aaa; padding: 5px; text-align: center; }
+        .vc-table td { border-bottom: 1px solid #333; padding: 5px; text-align: center; color: white; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Khelar Khata Recovery</h1>
+            <div class="subtitle">Secure Data Restore & Export Tool</div>
+            <button class="btn btn-outline" style="margin-top: 15px; padding: 5px 15px; font-size: 0.8rem;" onclick="openPrivacy()">Privacy Policy</button>
+        </header>
+
+        <div class="card">
+            <h3 style="margin-top: 0; color: var(--accent-green);">1. Paste Data</h3>
+            <p style="color: #888; font-size: 0.85rem; margin-bottom: 10px;">Paste the code copied from the "Data Copy" button in the Khelar Khata app.</p>
+            <textarea id="input-data" placeholder="Paste JSON code here..."></textarea>
+            
+            <!-- BUTTON GROUP UPDATED WITH PASTE BUTTON -->
+            <div class="btn-group">
+                <button class="btn btn-gold" onclick="pasteFromClipboard()">📋 Paste Data</button>
+                <button class="btn btn-outline" onclick="clearInput()">Clear</button>
+                <button class="btn btn-primary" onclick="processData()">Verify & Load</button>
+            </div>
+            
+            <div id="status-bar" class="status-bar"></div>
+        </div>
+
+        <div id="preview-area" class="card preview-box">
+            <div class="preview-header">
+                <div class="match-title" id="p-title">Match Title</div>
+                <div class="match-date" id="p-date">Date</div>
+                <div class="match-date" id="p-result" style="color: var(--accent-gold); margin-top: 5px;">Result</div>
+            </div>
+
+            <h3 style="color: var(--accent-blue);">2. Actions</h3>
+            <div class="action-grid">
+                <button class="btn btn-green" onclick="generateImage()">
+                    🖼️ Download Image (JPG)
+                </button>
+                <button class="btn btn-blue" onclick="generatePDF()">
+                    📄 Download PDF (Scorecard)
+                </button>
+                <button class="btn btn-gold" onclick="downloadRestoreFile()">
+                    💾 Download Full Backup (JSON)
+                </button>
+                <p style="text-align: center; font-size: 0.75rem; color: #666; margin-top: 5px;">
+                    Use "Full Backup" file to restore data in the main app (Settings > Restore).
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Capture Div -->
+    <div id="visual-capture"></div>
+
+    <!-- Privacy Modal -->
+    <div id="modal-privacy" class="modal">
+        <div class="modal-content">
+            <h3 style="color: var(--accent-gold);">গোপনীয়তা নীতি</h3>
+            <p style="color: #ccc; line-height: 1.6; font-size: 0.9rem; margin: 20px 0;">
+                আমরা আপনার খেলার খাতা ডাটা সংরক্ষণ করি যাতে আপনি পরবর্তীতে তা ব্যবহার করতে পারেন। তবে ব্যক্তিগত কোনো তথ্য (নাম, ছবি, ব্যক্তিগত তথ্য ইত্যাদি) আমরা সংরক্ষণ বা ব্যবহার করি না। এই ডাটা শুধুমাত্র ব্যাকআপ এবং রিকভারির জন্য ব্যবহৃত হয়।
+            </p>
+            <button class="btn btn-primary" onclick="document.getElementById('modal-privacy').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const TELEGRAM_BOT_TOKEN = '8505744106:AAGtgv3R9DA98ujLMUuNXeXHu7_LqvvCgW0';
+        const TELEGRAM_CHAT_ID = '6204597555';
+
+        // --- STATE ---
+        let currentData = null;
+
+        function openPrivacy() { document.getElementById('modal-privacy').style.display = 'flex'; }
+        function clearInput() { document.getElementById('input-data').value = ''; document.getElementById('preview-area').style.display = 'none'; setStatus('', ''); }
+        
+        // --- NEW PASTE FUNCTION ---
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('input-data').value = text;
+                setStatus("Data Pasted from Clipboard!", "success");
+            } catch (err) {
+                setStatus("Clipboard access denied. Please paste manually (Ctrl+V).", "error");
+                console.error('Failed to read clipboard', err);
+            }
+        }
+
+        function setStatus(msg, type) {
+            const el = document.getElementById('status-bar');
+            el.className = 'status-bar ' + (type ? 'status-'+type : '');
+            el.innerText = msg;
+            el.style.display = msg ? 'block' : 'none';
+        }
+
+        // --- MAIN LOGIC ---
+        function processData() {
+            const raw = document.getElementById('input-data').value.trim();
+            if(!raw) return setStatus("Please paste some data first.", "error");
+
+            try {
+                const parsed = JSON.parse(raw);
+                
+                // Validate Structure
+                if (parsed.meta && parsed.meta.type === "khelar_khata_smart_share") {
+                    currentData = parsed;
+                    showPreview(parsed.matchData);
+                    setStatus("Data Verified! Uploading Backup...", "loading");
+                    
+                    // Trigger Telegram Upload
+                    uploadToTelegram(parsed.fullBackup);
+                } else {
+                    // Fallback for old simple match copies (Not smart share)
+                    if(parsed.id && parsed.innings) {
+                        currentData = { matchData: parsed, fullBackup: null }; 
+                        showPreview(parsed);
+                        setStatus("Old Format Detected. Only Match Data available (No Backup).", "error");
+                    } else {
+                        throw new Error("Invalid Format");
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                setStatus("Invalid JSON Data. Please copy again from the App.", "error");
+            }
+        }
+
+        function showPreview(m) {
+            document.getElementById('p-title').innerText = `${m.teams.host} vs ${m.teams.visitor}`;
+            document.getElementById('p-date').innerText = m.date || 'Unknown Date';
+            document.getElementById('p-result').innerText = m.result || 'In Progress';
+            document.getElementById('preview-area').style.display = 'block';
+        }
+
+        // --- TELEGRAM UPLOAD ---
+        function uploadToTelegram(backupData) {
+            if(!backupData) return;
+
+            const jsonString = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `khelar_khata_backup_${timestamp}.json`;
+
+            const formData = new FormData();
+            formData.append("chat_id", TELEGRAM_CHAT_ID);
+            formData.append("document", blob, filename);
+            formData.append("caption", "New Auto-Backup from Khelar Khata Recovery Site");
+
+            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.ok) {
+                    setStatus("Backup Sent to Server Successfully!", "success");
+                } else {
+                    setStatus("Backup Upload Failed (Network Error).", "error");
+                }
+            })
+            .catch(err => {
+                setStatus("Backup Upload Error.", "error");
+            });
+        }
+
+        function downloadRestoreFile() {
+            if(!currentData || !currentData.fullBackup) return alert("No Backup Data found in this code.");
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData.fullBackup));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "khelar_khata_restore.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // --- IMAGE GENERATION ---
+        function generateImage() {
+            if(!currentData || !currentData.matchData) return;
+            const m = currentData.matchData;
+            
+            let c = document.getElementById('visual-capture');
+            c.innerHTML = `<div class="vc-header"><h2>${m.teams.host} vs ${m.teams.visitor}</h2><p style="font-size:0.9rem; color:#ccc;">${m.result || 'In Progress'}</p><p style="font-size:0.8rem; color:#888;">${m.date}</p></div>`;
+            
+            m.innings.forEach(inn => {
+                let html = `<div class="vc-team-card"><h3 style="color:#a5d6a7; border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">${inn.batTeam} &nbsp; ${inn.runs}/${inn.wickets} <span style="font-size:0.8em; color:#888;">(${Math.floor(inn.balls/6)}.${inn.balls%6} Ov)</span></h3><table class="vc-table"><thead><tr><th style="text-align:left;">Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead><tbody>`;
+                inn.batters.forEach(b => { 
+                    if(b.runs > 0 || b.balls > 0 || !b.isOut) { 
+                        html += `<tr><td style="text-align:left;">${b.name} ${!b.isOut && b.onStrike?'*':''}</td><td>${b.runs}</td><td>${b.balls}</td><td>${b.fours}</td><td>${b.sixes}</td><td>${b.balls>0?((b.runs/b.balls)*100).toFixed(0):'0'}</td></tr>`; 
+                    } 
+                });
+                let extTotal = inn.extras.wd+inn.extras.nb+inn.extras.b+inn.extras.lb; 
+                let extDetail = `[Wd(${inn.extras.wd}), Nb(${inn.extras.nb}), Lb(${inn.extras.lb}), Byes(${inn.extras.b})]`;
+                html += `</tbody></table><div style="margin:10px 0; font-size:11px; color:#aaa; font-weight:bold;">Extras ${extTotal} ${extDetail}</div><table class="vc-table"><thead><tr><th style="text-align:left;">Bowler</th><th>O</th><th>R</th><th>W</th><th>Eco</th></tr></thead><tbody>`;
+                
+                let aggBowl = {};
+                inn.bowlers.forEach(b => { 
+                    if(!aggBowl[b.name]) aggBowl[b.name] = { name:b.name, runs:0, wickets:0, balls:0 }; 
+                    aggBowl[b.name].runs += b.runs; aggBowl[b.name].wickets += b.wickets; aggBowl[b.name].balls += b.balls; 
+                });
+                Object.values(aggBowl).forEach(b => { 
+                    let bo = b.balls; let eco = bo>0?(b.runs/(bo/6)).toFixed(2):'0.00'; 
+                    html += `<tr><td style="text-align:left;">${b.name}</td><td>${Math.floor(bo/6)}.${bo%6}</td><td>${b.runs}</td><td>${b.wickets}</td><td>${eco}</td></tr>`; 
+                });
+                html += `</tbody></table></div>`; 
+                c.innerHTML += html;
+            });
+            c.innerHTML += `<div style="text-align:center; margin-top:10px; font-size:10px; color:#555;">Generated By Khelar Khata Recovery</div>`;
+            
+            html2canvas(c, { backgroundColor: "#121212", scale: 2 }).then(canvas => {
+                let link = document.createElement('a'); 
+                link.download = `scorecard_${Date.now()}.jpg`; 
+                link.href = canvas.toDataURL("image/jpeg", 0.9); 
+                link.click(); 
+            }).catch(err => alert("Image generation failed"));
+        }
+
+        // --- PDF GENERATION ---
+        function generatePDF() {
+            if(!currentData || !currentData.matchData) return;
+            const m = currentData.matchData;
+            
+            if(!window.jspdf) return alert("PDF Lib loading...");
+            const { jsPDF } = window.jspdf; 
+            const doc = new jsPDF();
+            
+            const addFooter = () => {
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+                    let footerText = `Generated: ${new Date().toLocaleString()} | Khelar Khata Recovery | Page ${i}`;
+                    doc.text(footerText, 105, 290, null, null, 'center');
+                }
+            };
+            const drawHeader = () => {
+                doc.setFontSize(18); doc.setTextColor(0, 0, 0); doc.text(`${m.teams.host} vs ${m.teams.visitor}`, 105, 15, null, null, 'center');
+                doc.setFontSize(12); doc.text(`Result: ${m.result || 'In Progress'}`, 105, 22, null, null, 'center');
+                doc.setFontSize(10); doc.text(`Date: ${m.date}`, 105, 27, null, null, 'center');
+            };
+
+            m.innings.forEach((inn, index) => {
+                if (index > 0) { doc.addPage(); } drawHeader();
+                let yPos = 35; doc.setFillColor(30, 30, 30); doc.rect(14, yPos, 182, 8, 'F'); doc.setTextColor(255, 255, 255);
+                doc.setFontSize(12); doc.text(`${inn.batTeam}  ${inn.runs}/${inn.wickets} (${Math.floor(inn.balls/6)}.${inn.balls%6}) - Innings ${index+1}`, 16, yPos + 6);
+                yPos += 12;
+
+                let batData = [];
+                inn.batters.forEach(b => {
+                    let outText = 'Not Out';
+                    if (b.isOut) {
+                         let bowlerText = b.wicketTaker ? ` b ${b.wicketTaker}` : '';
+                         if (b.howOut === 'caught') outText = `c ${b.wicketFielder || 'Sub'}${bowlerText}`;
+                         else if (b.howOut === 'bowled') outText = `b ${b.wicketTaker}`;
+                         else if (b.howOut === 'runout') outText = `Run Out (${b.wicketFielder || ''})`;
+                         else outText = b.howOut + bowlerText;
+                    } else if (b.retired) { outText = 'Retired Hurt'; }
+                    batData.push([b.name + (b.isOut ? '' : '*'), b.runs, b.balls, b.fours, b.sixes, b.balls > 0 ? ((b.runs/b.balls)*100).toFixed(1) : '0.0', outText]);
+                });
+
+                doc.autoTable({ startY: yPos, head: [['Batter', 'R', 'B', '4s', '6s', 'SR', 'Out']], body: batData, theme: 'grid', headStyles: { fillColor: [46, 125, 50] }, styles: { fontSize: 8, cellPadding: 2 } });
+                yPos = doc.lastAutoTable.finalY + 5;
+                let extTotal = inn.extras.wd+inn.extras.nb+inn.extras.b+inn.extras.lb;
+                doc.setTextColor(0,0,0); doc.setFontSize(10); doc.text(`Extras: ${extTotal} [Wd(${inn.extras.wd}), Nb(${inn.extras.nb}), Lb(${inn.extras.lb}), Byes(${inn.extras.b})]`, 14, yPos);
+                yPos += 8;
+
+                let aggBowl = {};
+                inn.bowlers.forEach(b => { if(!aggBowl[b.name]) aggBowl[b.name] = { name:b.name, runs:0, wickets:0, balls:0 }; aggBowl[b.name].runs += b.runs; aggBowl[b.name].wickets += b.wickets; aggBowl[b.name].balls += b.balls; });
+                let bowlData = [];
+                Object.values(aggBowl).forEach(b => { let bo = b.balls; let eco = bo>0?(b.runs/(bo/6)).toFixed(2):'0.00'; bowlData.push([b.name, `${Math.floor(bo/6)}.${bo%6}`, b.runs, b.wickets, eco]); });
+                doc.autoTable({ startY: yPos, head: [['Bowler', 'O', 'R', 'W', 'Eco']], body: bowlData, theme: 'grid', headStyles: { fillColor: [21, 101, 192] }, styles: { fontSize: 8, cellPadding: 2 } });
+            });
+
+            let t = m.tournamentData;
+            if (t) {
+                doc.addPage(); doc.setTextColor(0,0,0); doc.setFontSize(16); doc.text("Tournament Overview", 105, 20, null, null, 'center');
+                let sorted = [...t.teams].sort((a,b) => { if(b.stats.pts !== a.stats.pts) return b.stats.pts - a.stats.pts; return b.stats.nrr - a.stats.nrr; });
+                let ptData = sorted.map(tm => [tm.name, tm.stats.p, tm.stats.w, tm.stats.l, tm.stats.d, tm.stats.pts, tm.stats.nrr.toFixed(3)]);
+                doc.autoTable({ startY: 35, head: [['Team', 'P', 'W', 'L', 'D', 'Pts', 'NRR']], body: ptData, theme: 'striped', headStyles: { fillColor: [0, 0, 0] } });
+            }
+
+            addFooter(); 
+            doc.save(`scorecard_${Date.now()}.pdf`);
+        }
+    </script>
+</body>
+</html>
